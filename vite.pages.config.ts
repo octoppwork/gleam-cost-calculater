@@ -3,9 +3,10 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [react()],
-  publicDir: "public",
+  root: "pages-src",
+  publicDir: "../public",
   build: {
-    outDir: "dist-pages",
+    outDir: "../dist-pages",
     emptyOutDir: true,
   },
 });
