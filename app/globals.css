@@ -440,8 +440,16 @@ button { cursor: pointer; }
 }
 .quote-note {
   margin: 9px 0 25px;
-  color: rgba(255, 255, 255, 0.48);
-  font-size: 12px;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 13px;
+  font-weight: 600;
+}
+.quote-note small {
+  display: block;
+  margin-top: 3px;
+  color: rgba(255, 255, 255, 0.46);
+  font-size: 11px;
+  font-weight: 400;
 }
 .summary-list {
   display: grid;
@@ -493,6 +501,11 @@ button { cursor: pointer; }
   font-variant-numeric: tabular-nums;
 }
 .tax-control > div span { color: rgba(255, 255, 255, 0.62); }
+.tax-separator {
+  height: 1px;
+  margin: 14px 0;
+  background: rgba(255, 255, 255, 0.11);
+}
 .after-tax {
   margin-top: 15px;
   padding-top: 15px;
