@@ -6,11 +6,18 @@ import {
   CalendarDays,
   ChevronDown,
   Cpu,
+  Download,
+  FileSpreadsheet,
   Plus,
   Trash2,
   UserRoundPlus,
   Users,
 } from "lucide-react";
+import {
+  createQuoteAllocation,
+  exportQuoteWorkbook,
+  type QuoteLine,
+} from "../lib/quote-export";
 
 type Member = { id: number; name: string; salary: number; days: number };
 type ExternalCost = { id: number; category: string; owner: string; cost: number };
@@ -74,6 +81,11 @@ export default function Home() {
   const [taxRate, setTaxRate] = useState(6);
   const [afterTaxDraft, setAfterTaxDraft] = useState<string | null>(null);
   const [openLibraryFor, setOpenLibraryFor] = useState<number | null>(null);
+  const [exportProjectName, setExportProjectName] = useState("未命名项目");
+  const [videoDuration, setVideoDuration] = useState(15);
+  const [exportQuoteDraft, setExportQuoteDraft] = useState<string | null>("85500");
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
 
   const projectDays = workdaysBetween(startDate, endDate);
   const result = useMemo(() => {
@@ -101,6 +113,12 @@ export default function Home() {
       profit: baseQuote - totalCost,
     };
   }, [members, externalCosts, credits, margin, riskRate, taxRate]);
+  const suggestedExportQuote = Math.round(result.baseQuote / 100) * 100;
+  const exportQuote = Number(exportQuoteDraft ?? suggestedExportQuote);
+  const quoteAllocation = useMemo(
+    () => createQuoteAllocation(exportQuote, videoDuration),
+    [exportQuote, videoDuration],
+  );
 
   const updateMember = (
     id: number,
@@ -485,8 +503,115 @@ export default function Home() {
             </div>
           </aside>
         </div>
+
+        <GlassSection
+          icon={<FileSpreadsheet size={19} />}
+          title="Excel 报价单"
+          trailing={<span className="export-badge">按模板生成</span>}
+        >
+          <div className="export-intro">
+            <p>填写最终未税报价和视频时长，系统会按制作阶段自动拆分，并生成带公式的 Excel 报价单。</p>
+            <span>全部分项金额按 100 元取整</span>
+          </div>
+
+          <div className="export-fields">
+            <InputField label="项目名称" value={exportProjectName} onChange={setExportProjectName} />
+            <InputField
+              label="视频时长"
+              type="number"
+              value={String(videoDuration)}
+              suffix="秒"
+              onChange={(value) => setVideoDuration(Math.max(0, Number(value)))}
+            />
+            <InputField
+              label="最终未税报价"
+              type="number"
+              value={String(exportQuoteDraft ?? suggestedExportQuote)}
+              suffix="元"
+              onChange={setExportQuoteDraft}
+            />
+          </div>
+
+          <div className="allocation-summary">
+            <AllocationCard label="前置制作" value={quoteAllocation.sectionTotals.preProduction} total={quoteAllocation.total} />
+            <AllocationCard label="AI 制作" value={quoteAllocation.sectionTotals.aiProduction} total={quoteAllocation.total} />
+            <AllocationCard label="后期制作" value={quoteAllocation.sectionTotals.postProduction} total={quoteAllocation.total} />
+          </div>
+
+          {quoteAllocation.error ? (
+            <div className="export-warning">{quoteAllocation.error}</div>
+          ) : (
+            <div className="quote-preview-grid">
+              <QuotePreviewTable title="人员组" lines={quoteAllocation.preProduction} />
+              <QuotePreviewTable title="AI 制作" lines={quoteAllocation.aiProduction} />
+              <QuotePreviewTable title="后期制作" lines={quoteAllocation.postProduction} />
+            </div>
+          )}
+
+          {exportError && <div className="export-warning">{exportError}</div>}
+          <div className="export-footer">
+            <div>
+              <span>导出未税总价</span>
+              <strong>{money(quoteAllocation.total)}</strong>
+            </div>
+            <button
+              className="export-button"
+              disabled={Boolean(quoteAllocation.error) || isExporting}
+              onClick={async () => {
+                setExportError("");
+                setIsExporting(true);
+                try {
+                  await exportQuoteWorkbook({
+                    projectName: exportProjectName,
+                    quote: exportQuote,
+                    duration: videoDuration,
+                    workdays: projectDays,
+                    deliveryDate: endDate,
+                    taxRate,
+                    allocation: quoteAllocation,
+                  });
+                } catch (error) {
+                  console.error(error);
+                  setExportError("Excel 生成失败，请刷新页面后重试。");
+                } finally {
+                  setIsExporting(false);
+                }
+              }}
+            >
+              <Download size={17} /> {isExporting ? "正在生成…" : "导出 Excel 报价单"}
+            </button>
+          </div>
+        </GlassSection>
       </div>
     </main>
+  );
+}
+
+function AllocationCard({ label, value, total }: { label: string; value: number; total: number }) {
+  const ratio = total > 0 ? (value / total) * 100 : 0;
+  return (
+    <div className="allocation-card">
+      <span>{label}</span>
+      <strong>{money(value)}</strong>
+      <small>{ratio.toFixed(1)}%</small>
+    </div>
+  );
+}
+
+function QuotePreviewTable({ title, lines }: { title: string; lines: QuoteLine[] }) {
+  return (
+    <div className="preview-table">
+      <div className="preview-table-title">
+        <strong>{title}</strong>
+        <span>{money(lines.reduce((sum, line) => sum + line.total, 0))}</span>
+      </div>
+      {lines.map((line) => (
+        <div className="preview-line" key={line.name}>
+          <span>{line.name}</span>
+          <strong>{money(line.total)}</strong>
+        </div>
+      ))}
+    </div>
   );
 }
 
