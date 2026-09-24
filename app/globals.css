@@ -429,27 +429,45 @@ button { cursor: pointer; }
   padding: 5px 9px;
   font-size: 11px;
 }
-.quote-value {
-  display: block;
-  margin-top: 12px;
+.quote-options {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0 24px;
+}
+.quote-option {
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.055);
+  padding: 14px 15px;
+}
+.quote-option.featured {
+  border-color: rgba(90, 200, 250, 0.3);
+  background: rgba(90, 200, 250, 0.11);
+}
+.quote-option > span {
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 12px;
+}
+.quote-option > output {
   color: #fff;
-  font-size: clamp(38px, 4vw, 48px);
+  font-size: 28px;
+  font-weight: 680;
+  letter-spacing: -0.04em;
+  line-height: 1.08;
+}
+.quote-option > small {
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 11px;
+  line-height: 1.35;
+}
+.quote-option .quote-value {
+  color: #fff;
+  font-size: clamp(34px, 4vw, 44px);
   font-weight: 700;
   letter-spacing: -0.055em;
   line-height: 1;
-}
-.quote-note {
-  margin: 9px 0 25px;
-  color: rgba(255, 255, 255, 0.76);
-  font-size: 13px;
-  font-weight: 600;
-}
-.quote-note small {
-  display: block;
-  margin-top: 3px;
-  color: rgba(255, 255, 255, 0.46);
-  font-size: 11px;
-  font-weight: 400;
 }
 .summary-list {
   display: grid;
