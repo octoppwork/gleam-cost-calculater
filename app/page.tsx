@@ -400,13 +400,20 @@ export default function Home() {
               <p>建议对外报价</p>
               <span>未税</span>
             </div>
-            <output className="quote-value">{money(result.beforeTax)}</output>
-            <p className="quote-note">
-              含风险预估费用后利润率 {riskAdjustedMarginLabel}%
-              <small>
-                目标利润率 {marginLabel}% · 风险预估 {riskRate}%
-              </small>
-            </p>
+            <div className="quote-options">
+              <div className="quote-option">
+                <span>不含风险预估</span>
+                <output>{money(result.baseQuote)}</output>
+                <small>目标利润率 {marginLabel}%</small>
+              </div>
+              <div className="quote-option featured">
+                <span>含风险预估</span>
+                <output className="quote-value">{money(result.beforeTax)}</output>
+                <small>
+                  含风险预估费用后利润率 {riskAdjustedMarginLabel}% · 风险预估 {riskRate}%
+                </small>
+              </div>
+            </div>
 
             <div className="summary-list">
               <SummaryRow label="人工成本" value={money(result.labor)} />
