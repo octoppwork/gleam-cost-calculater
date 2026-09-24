@@ -61,7 +61,10 @@ export default function Home() {
     { id: 1, name: "", salary: 0, days: 12 },
   ]);
   const [externalCosts, setExternalCosts] = useState<ExternalCost[]>([
-    { id: 1, category: "调色", owner: "", cost: 0 },
+    { id: 1, category: "剪辑", owner: "", cost: 0 },
+    { id: 2, category: "调色", owner: "", cost: 0 },
+    { id: 3, category: "Online", owner: "", cost: 0 },
+    { id: 4, category: "声音", owner: "", cost: 0 },
   ]);
   const [startDate, setStartDate] = useState("2026-09-01");
   const [endDate, setEndDate] = useState("2026-09-30");
