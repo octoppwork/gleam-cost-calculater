@@ -67,6 +67,7 @@ export default function Home() {
   const [endDate, setEndDate] = useState("2026-09-30");
   const [credits, setCredits] = useState(12000);
   const [margin, setMargin] = useState(50);
+  const [riskRate, setRiskRate] = useState(15);
   const [taxRate, setTaxRate] = useState(6);
   const [afterTaxDraft, setAfterTaxDraft] = useState<string | null>(null);
   const [openLibraryFor, setOpenLibraryFor] = useState<number | null>(null);
@@ -80,19 +81,23 @@ export default function Home() {
     const external = externalCosts.reduce((total, item) => total + item.cost, 0);
     const compute = credits / CREDITS_PER_RMB;
     const totalCost = labor + external + compute;
-    const beforeTax = totalCost / Math.max(1 - margin / 100, 0.01);
+    const baseQuote = totalCost / Math.max(1 - margin / 100, 0.01);
+    const risk = baseQuote * (riskRate / 100);
+    const beforeTax = baseQuote + risk;
     const tax = beforeTax * (taxRate / 100);
     return {
       labor,
       external,
       compute,
       totalCost,
+      baseQuote,
+      risk,
       beforeTax,
       tax,
       afterTax: beforeTax + tax,
-      profit: beforeTax - totalCost,
+      profit: baseQuote - totalCost,
     };
-  }, [members, externalCosts, credits, margin, taxRate]);
+  }, [members, externalCosts, credits, margin, riskRate, taxRate]);
 
   const updateMember = (
     id: number,
@@ -130,9 +135,10 @@ export default function Home() {
     if (!Number.isFinite(afterTaxQuote) || afterTaxQuote < 0) return;
 
     const beforeTaxQuote = afterTaxQuote / (1 + taxRate / 100);
+    const baseQuote = beforeTaxQuote / (1 + riskRate / 100);
     const nextMargin =
-      beforeTaxQuote > 0
-        ? (1 - result.totalCost / beforeTaxQuote) * 100
+      baseQuote > 0
+        ? (1 - result.totalCost / baseQuote) * 100
         : 0;
 
     setMargin(Math.min(90, Math.max(0, nextMargin)));
@@ -141,6 +147,13 @@ export default function Home() {
   const marginLabel = Number.isInteger(margin)
     ? String(margin)
     : margin.toFixed(1);
+  const riskAdjustedMargin =
+    result.beforeTax > 0
+      ? ((result.beforeTax - result.totalCost) / result.beforeTax) * 100
+      : 0;
+  const riskAdjustedMarginLabel = Number.isInteger(riskAdjustedMargin)
+    ? String(riskAdjustedMargin)
+    : riskAdjustedMargin.toFixed(1);
 
   return (
     <main className="app-shell">
@@ -154,7 +167,9 @@ export default function Home() {
             <h1>成本核算器</h1>
             <p className="header-copy">根据项目投入，快速得到可靠报价。</p>
           </div>
-          <div className="formula-chip">报价 = 总成本 ÷ (1 − 利润率)</div>
+          <div className="formula-chip">
+            未税报价 = 总成本 ÷ (1 − 利润率) × (1 + 风险比例)
+          </div>
         </header>
 
         <div className="app-grid">
@@ -386,7 +401,12 @@ export default function Home() {
               <span>未税</span>
             </div>
             <output className="quote-value">{money(result.beforeTax)}</output>
-            <p className="quote-note">按 {marginLabel}% 目标利润率计算</p>
+            <p className="quote-note">
+              含风险预估费用后利润率 {riskAdjustedMarginLabel}%
+              <small>
+                目标利润率 {marginLabel}% · 风险预估 {riskRate}%
+              </small>
+            </p>
 
             <div className="summary-list">
               <SummaryRow label="人工成本" value={money(result.labor)} />
@@ -401,6 +421,25 @@ export default function Home() {
             </div>
 
             <div className="tax-panel">
+              <div className="tax-control">
+                <label htmlFor="risk-rate">风险预估费用</label>
+                <div>
+                  <input
+                    id="risk-rate"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    value={riskRate}
+                    onChange={(event) =>
+                      setRiskRate(Math.max(0, Number(event.target.value)))
+                    }
+                  />
+                  <span>%</span>
+                </div>
+              </div>
+              <SummaryRow label="风险预估费用" value={money(result.risk)} />
+              <div className="tax-separator" />
               <div className="tax-control">
                 <label htmlFor="tax-rate">税点</label>
                 <div>
