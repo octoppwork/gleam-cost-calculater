@@ -415,8 +415,9 @@ export default function Home() {
               </div>
             </GlassSection>
           </div>
+        </div>
 
-          <aside className="quote-card">
+        <aside className="quote-card">
             <div className="quote-top">
               <p>建议对外报价</p>
               <span>未税</span>
@@ -501,8 +502,7 @@ export default function Home() {
                 <small>修改后将自动反算目标利润率</small>
               </div>
             </div>
-          </aside>
-        </div>
+        </aside>
 
         <GlassSection
           icon={<FileSpreadsheet size={19} />}

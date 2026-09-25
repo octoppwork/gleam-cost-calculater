@@ -111,7 +111,7 @@ button { cursor: pointer; }
 
 .app-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 22px;
   align-items: start;
 }
@@ -399,8 +399,9 @@ button { cursor: pointer; }
 }
 
 .quote-card {
-  position: sticky;
-  top: 24px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.72);
   border-radius: 28px;
@@ -412,6 +413,7 @@ button { cursor: pointer; }
   padding: 26px;
 }
 .quote-top {
+  grid-column: 1 / -1;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -432,7 +434,7 @@ button { cursor: pointer; }
 .quote-options {
   display: grid;
   gap: 10px;
-  margin: 12px 0 24px;
+  margin: 0;
 }
 .quote-option {
   display: grid;
@@ -472,9 +474,11 @@ button { cursor: pointer; }
 .summary-list {
   display: grid;
   gap: 13px;
-  padding: 20px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  align-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.055);
+  padding: 18px;
 }
 .summary-row {
   display: flex;
@@ -490,7 +494,7 @@ button { cursor: pointer; }
   font-weight: 650;
 }
 .tax-panel {
-  margin-top: 18px;
+  margin-top: 0;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.09);
   padding: 16px;
@@ -567,7 +571,8 @@ button { cursor: pointer; }
   font-size: 11px;
 }
 
-.app-grid + .glass-section { margin-top: 22px; }
+.app-grid + .quote-card,
+.quote-card + .glass-section { margin-top: 22px; }
 .export-badge {
   border-radius: 999px;
   color: var(--blue);
@@ -701,8 +706,8 @@ button { cursor: pointer; }
 .export-button:disabled { cursor: default; opacity: 0.4; }
 
 @media (max-width: 980px) {
-  .app-grid { grid-template-columns: 1fr; }
-  .quote-card { position: static; }
+  .quote-card { grid-template-columns: 1fr; }
+  .quote-top { grid-column: auto; }
 }
 @media (max-width: 720px) {
   .app-shell { padding: 24px 14px 48px; }
