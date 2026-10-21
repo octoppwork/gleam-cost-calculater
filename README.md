@@ -12,7 +12,8 @@
 - 目标利润率滑块
 - 风险预估费用比例（默认 15%，可手动调整）
 - 税点、未税报价、含税报价和成本明细
-- 修改含税报价后反算利润率
+- 含税报价的多货币换算（自动同步参考汇率，也可手动调整）
+- 修改人民币或外币含税报价后，双向同步金额并反算利润率；手动报价保留至调整利润率滑块
 - Apple 风格圆角与磨砂玻璃界面
 
 ## 源码位置
@@ -39,7 +40,7 @@ npm ci
 npm run dev
 ```
 
-默认本地地址为 `http://localhost:5173/`。
+默认本地地址为 `http://localhost:5173/`，与 Cloudflare Pages 使用同一浏览器入口。原 ChatGPT Sites / Vinext 预览可用 `npm run dev:sites`。
 
 ## 构建与检查
 
@@ -61,6 +62,12 @@ npm run build:pages
 
 ```bash
 npm run lint
+```
+
+报价与汇率反推计算检查（Node.js 22.13 需使用该命令中的类型剥离选项）：
+
+```bash
+npm run test:pricing
 ```
 
 ## 恢复现有网站

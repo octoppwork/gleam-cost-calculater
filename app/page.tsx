@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   BriefcaseBusiness,
   CalendarDays,
@@ -9,6 +9,8 @@ import {
   Download,
   FileSpreadsheet,
   Plus,
+  Pencil,
+  RefreshCw,
   Trash2,
   UserRoundPlus,
   Users,
@@ -18,12 +20,27 @@ import {
   exportQuoteWorkbook,
   type QuoteLine,
 } from "../lib/quote-export";
+import { calculateQuote, convertQuoteToCny } from "../lib/pricing";
 
 type Member = { id: number; name: string; salary: number; days: number };
 type ExternalCost = { id: number; category: string; owner: string; cost: number };
+type CurrencyCode = "CNY" | "USD" | "EUR" | "HKD" | "GBP" | "JPY" | "KRW" | "SGD" | "AUD" | "CAD" | "CHF";
 
 const MEMBER_LIBRARY: Array<{ name: string; salary: number }> = [];
 const CREDITS_PER_RMB = 12.5;
+const CURRENCIES: Array<{ code: CurrencyCode; label: string }> = [
+  { code: "CNY", label: "人民币 CNY" },
+  { code: "USD", label: "美元 USD" },
+  { code: "EUR", label: "欧元 EUR" },
+  { code: "HKD", label: "港币 HKD" },
+  { code: "GBP", label: "英镑 GBP" },
+  { code: "JPY", label: "日元 JPY" },
+  { code: "KRW", label: "韩元 KRW" },
+  { code: "SGD", label: "新加坡元 SGD" },
+  { code: "AUD", label: "澳元 AUD" },
+  { code: "CAD", label: "加元 CAD" },
+  { code: "CHF", label: "瑞士法郎 CHF" },
+];
 
 const holidays = new Set([
   "2026-01-01", "2026-01-02", "2026-01-03",
@@ -63,6 +80,13 @@ function money(value: number) {
   }).format(Number.isFinite(value) ? value : 0);
 }
 
+function currencySymbol(currency: CurrencyCode) {
+  return new Intl.NumberFormat("zh-CN", {
+    style: "currency",
+    currency,
+  }).formatToParts(0).find((part) => part.type === "currency")?.value ?? currency;
+}
+
 export default function Home() {
   const [members, setMembers] = useState<Member[]>([
     { id: 1, name: "", salary: 0, days: 12 },
@@ -80,12 +104,52 @@ export default function Home() {
   const [riskRate, setRiskRate] = useState(15);
   const [taxRate, setTaxRate] = useState(6);
   const [afterTaxDraft, setAfterTaxDraft] = useState<string | null>(null);
+  const [manualAfterTaxQuote, setManualAfterTaxQuote] = useState<number | null>(null);
+  const [convertedQuoteDraft, setConvertedQuoteDraft] = useState<string | null>(null);
   const [openLibraryFor, setOpenLibraryFor] = useState<number | null>(null);
   const [exportProjectName, setExportProjectName] = useState("未命名项目");
   const [videoDuration, setVideoDuration] = useState(15);
   const [exportQuoteDraft, setExportQuoteDraft] = useState<string | null>("85500");
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState("");
+  const [targetCurrency, setTargetCurrency] = useState<CurrencyCode>("USD");
+  const [exchangeRate, setExchangeRate] = useState(0);
+  const [exchangeDate, setExchangeDate] = useState("");
+  const [exchangeLoading, setExchangeLoading] = useState(true);
+  const [exchangeError, setExchangeError] = useState("");
+  const [exchangeRefreshKey, setExchangeRefreshKey] = useState(0);
+
+  useEffect(() => {
+    if (targetCurrency === "CNY") return;
+
+    const controller = new AbortController();
+    const syncExchangeRate = async () => {
+      try {
+        const response = await fetch(
+          `https://api.frankfurter.dev/v2/rate/cny/${targetCurrency.toLowerCase()}`,
+          { signal: controller.signal },
+        );
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = (await response.json()) as {
+          date?: string;
+          rate?: number;
+        };
+        const rate = data.rate;
+        if (!rate || !Number.isFinite(rate)) throw new Error("Invalid exchange rate");
+        setExchangeRate(rate);
+        setExchangeDate(data.date ?? "");
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          setExchangeError("自动同步失败，可手动填写汇率");
+        }
+      } finally {
+        if (!controller.signal.aborted) setExchangeLoading(false);
+      }
+    };
+
+    void syncExchangeRate();
+    return () => controller.abort();
+  }, [targetCurrency, exchangeRefreshKey]);
 
   const projectDays = workdaysBetween(startDate, endDate);
   const result = useMemo(() => {
@@ -96,23 +160,20 @@ export default function Home() {
     const external = externalCosts.reduce((total, item) => total + item.cost, 0);
     const compute = credits / CREDITS_PER_RMB;
     const totalCost = labor + external + compute;
-    const baseQuote = totalCost / Math.max(1 - margin / 100, 0.01);
-    const risk = baseQuote * (riskRate / 100);
-    const beforeTax = baseQuote + risk;
-    const tax = beforeTax * (taxRate / 100);
     return {
       labor,
       external,
       compute,
       totalCost,
-      baseQuote,
-      risk,
-      beforeTax,
-      tax,
-      afterTax: beforeTax + tax,
-      profit: baseQuote - totalCost,
+      ...calculateQuote({
+        totalCost,
+        targetMargin: margin,
+        riskRate,
+        taxRate,
+        afterTaxQuote: manualAfterTaxQuote,
+      }),
     };
-  }, [members, externalCosts, credits, margin, riskRate, taxRate]);
+  }, [members, externalCosts, credits, margin, riskRate, taxRate, manualAfterTaxQuote]);
   const suggestedExportQuote = Math.round(result.baseQuote / 100) * 100;
   const exportQuote = Number(exportQuoteDraft ?? suggestedExportQuote);
   const quoteAllocation = useMemo(
@@ -150,31 +211,30 @@ export default function Home() {
 
   const updateAfterTaxQuote = (value: string) => {
     setAfterTaxDraft(value);
+    setConvertedQuoteDraft(null);
     if (value === "") return;
 
     const afterTaxQuote = Number(value);
     if (!Number.isFinite(afterTaxQuote) || afterTaxQuote < 0) return;
-
-    const beforeTaxQuote = afterTaxQuote / (1 + taxRate / 100);
-    const baseQuote = beforeTaxQuote / (1 + riskRate / 100);
-    const nextMargin =
-      baseQuote > 0
-        ? (1 - result.totalCost / baseQuote) * 100
-        : 0;
-
-    setMargin(Math.min(90, Math.max(0, nextMargin)));
+    setManualAfterTaxQuote(afterTaxQuote);
   };
 
-  const marginLabel = Number.isInteger(margin)
-    ? String(margin)
-    : margin.toFixed(1);
-  const riskAdjustedMargin =
-    result.beforeTax > 0
-      ? ((result.beforeTax - result.totalCost) / result.beforeTax) * 100
-      : 0;
-  const riskAdjustedMarginLabel = Number.isInteger(riskAdjustedMargin)
-    ? String(riskAdjustedMargin)
-    : riskAdjustedMargin.toFixed(1);
+  const updateConvertedQuote = (value: string) => {
+    setConvertedQuoteDraft(value);
+    setAfterTaxDraft(null);
+    if (value === "") return;
+    const afterTaxQuote = convertQuoteToCny(Number(value), exchangeRate);
+    if (afterTaxQuote !== null) setManualAfterTaxQuote(afterTaxQuote);
+  };
+
+  const activeMargin = manualAfterTaxQuote === null ? margin : result.margin;
+  const marginLabel = activeMargin === null ? "—"
+    : Number.isInteger(activeMargin) ? String(activeMargin) : activeMargin.toFixed(1);
+  const riskAdjustedMarginLabel = result.riskAdjustedMargin === null ? "—"
+    : Number.isInteger(result.riskAdjustedMargin)
+      ? String(result.riskAdjustedMargin) : result.riskAdjustedMargin.toFixed(1);
+  const convertedAfterTax = result.afterTax * exchangeRate;
+  const currencyDigits = targetCurrency === "JPY" || targetCurrency === "KRW" ? 0 : 2;
 
   return (
     <main className="app-shell">
@@ -403,8 +463,13 @@ export default function Home() {
                   min="0"
                   max="90"
                   step="0.1"
-                  value={margin}
-                  onChange={(event) => setMargin(Number(event.target.value))}
+                  value={Math.min(90, Math.max(0, activeMargin ?? 0))}
+                  onChange={(event) => {
+                    setMargin(Number(event.target.value));
+                    setManualAfterTaxQuote(null);
+                    setAfterTaxDraft(null);
+                    setConvertedQuoteDraft(null);
+                  }}
                 />
                 <output>{marginLabel}%</output>
               </div>
@@ -413,6 +478,14 @@ export default function Home() {
                 <span>建议 50%</span>
                 <span>上限 90%</span>
               </div>
+              {manualAfterTaxQuote !== null && (
+                <p className="manual-quote-note" role="status">
+                  {activeMargin === null
+                    ? "报价为 0，暂无法计算利润率。"
+                    : `当前利润率由手动报价反推${activeMargin < 0 ? "，低于成本" : ""}。`}
+                  调整滑块将重新生成报价。
+                </p>
+              )}
             </GlassSection>
           </div>
         </div>
@@ -461,7 +534,7 @@ export default function Home() {
                     step="0.1"
                     value={riskRate}
                     onChange={(event) =>
-                      setRiskRate(Math.max(0, Number(event.target.value)))
+                      setRiskRate(Math.min(100, Math.max(0, Number(event.target.value))))
                     }
                   />
                   <span>%</span>
@@ -478,28 +551,108 @@ export default function Home() {
                     min="0"
                     max="100"
                     value={taxRate}
-                    onChange={(event) => setTaxRate(Number(event.target.value))}
+                    onChange={(event) => setTaxRate(Math.min(100, Math.max(0, Number(event.target.value))))}
                   />
                   <span>%</span>
                 </div>
               </div>
               <SummaryRow label="税额" value={money(result.tax)} />
               <div className="after-tax">
-                <label htmlFor="after-tax-quote">含税报价</label>
+                <label htmlFor="after-tax-quote">含税报价 <Pencil size={12} aria-hidden="true" /></label>
                 <div className="after-tax-input">
                   <span>¥</span>
                   <input
                     id="after-tax-quote"
                     aria-label="含税报价"
                     type="number"
+                    inputMode="decimal"
                     min="0"
-                    step="1"
-                    value={afterTaxDraft ?? Math.round(result.afterTax)}
+                    step="0.01"
+                    value={afterTaxDraft ?? Number(result.afterTax.toFixed(2))}
                     onChange={(event) => updateAfterTaxQuote(event.target.value)}
                     onBlur={() => setAfterTaxDraft(null)}
                   />
                 </div>
                 <small>修改后将自动反算目标利润率</small>
+              </div>
+              <div className="currency-converter">
+                <div className="currency-heading">
+                  <label htmlFor="target-currency">货币换算</label>
+                  <button
+                    type="button"
+                    aria-label="刷新汇率"
+                    disabled={exchangeLoading || targetCurrency === "CNY"}
+                    onClick={() => {
+                      setExchangeLoading(true);
+                      setExchangeError("");
+                      setConvertedQuoteDraft(null);
+                      setExchangeRefreshKey((value) => value + 1);
+                    }}
+                  >
+                    <RefreshCw size={13} className={exchangeLoading ? "is-spinning" : ""} />
+                    {exchangeLoading ? "同步中" : "刷新"}
+                  </button>
+                </div>
+                <select
+                  id="target-currency"
+                  value={targetCurrency}
+                  onChange={(event) => {
+                    const currency = event.target.value as CurrencyCode;
+                    setTargetCurrency(currency);
+                    setExchangeRate(currency === "CNY" ? 1 : 0);
+                    setExchangeDate("");
+                    setExchangeError("");
+                    setExchangeLoading(currency !== "CNY");
+                    setConvertedQuoteDraft(null);
+                  }}
+                >
+                  {CURRENCIES.map((currency) => (
+                    <option key={currency.code} value={currency.code}>
+                      {currency.label}
+                    </option>
+                  ))}
+                </select>
+                <label className="converted-quote-label" htmlFor="converted-quote">
+                  外币含税报价 <Pencil size={12} aria-hidden="true" />
+                </label>
+                <div className="converted-quote">
+                  <span>{currencySymbol(targetCurrency)}</span>
+                  <input
+                    id="converted-quote"
+                    aria-label="外币含税报价"
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step={currencyDigits === 0 ? "1" : "0.01"}
+                    disabled={exchangeLoading || exchangeRate <= 0}
+                    placeholder="—"
+                    value={convertedQuoteDraft ?? (exchangeRate > 0
+                      ? convertedAfterTax.toFixed(currencyDigits) : "")}
+                    onChange={(event) => updateConvertedQuote(event.target.value)}
+                    onBlur={() => setConvertedQuoteDraft(null)}
+                  />
+                </div>
+                <small className="converted-quote-hint">修改后同步人民币报价，并反算目标利润率</small>
+                <div className="exchange-rate-row">
+                  <span>1 CNY =</span>
+                  <input
+                    aria-label="当前汇率"
+                    type="number"
+                    min="0"
+                    step="0.0001"
+                    value={exchangeRate || ""}
+                    onChange={(event) => {
+                      setExchangeRate(Math.max(0, Number(event.target.value)));
+                      setConvertedQuoteDraft(null);
+                    }}
+                  />
+                  <span>{targetCurrency}</span>
+                </div>
+                <small className={exchangeError ? "exchange-status error" : "exchange-status"}>
+                  {targetCurrency === "CNY"
+                    ? "人民币无需换算"
+                    : exchangeError || (exchangeDate ? `参考汇率日期 ${exchangeDate}` : "正在获取参考汇率")}
+                </small>
               </div>
             </div>
         </aside>

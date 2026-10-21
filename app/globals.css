@@ -534,7 +534,9 @@ button { cursor: pointer; }
   border-top: 1px solid rgba(255, 255, 255, 0.11);
 }
 .after-tax > label {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   color: rgba(255, 255, 255, 0.62);
   font-size: 12px;
 }
@@ -543,7 +545,9 @@ button { cursor: pointer; }
   align-items: center;
   margin-top: 4px;
   color: #fff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.26);
 }
+.after-tax-input:focus-within { border-color: rgba(255, 255, 255, 0.8); }
 .after-tax-input > span {
   font-size: 27px;
   font-weight: 700;
@@ -562,7 +566,7 @@ button { cursor: pointer; }
   font-variant-numeric: tabular-nums;
 }
 .after-tax-input input:focus {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.55);
+  outline: 0;
 }
 .after-tax > small {
   display: block;
@@ -570,6 +574,120 @@ button { cursor: pointer; }
   color: rgba(255, 255, 255, 0.46);
   font-size: 11px;
 }
+.currency-converter {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(255, 255, 255, 0.11);
+}
+.currency-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.currency-heading label {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 12px;
+}
+.currency-heading button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.1);
+  padding: 5px 8px;
+  font-size: 10px;
+}
+.currency-heading button:disabled { cursor: default; opacity: 0.55; }
+.currency-heading .is-spinning { animation: exchange-spin 900ms linear infinite; }
+.currency-converter select {
+  width: 100%;
+  margin-top: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  outline: 0;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 9px 10px;
+  font-size: 12px;
+}
+.currency-converter select option { color: #111; background: #fff; }
+.converted-quote {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  margin-top: 4px;
+  color: #fff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.26);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.converted-quote:focus-within { border-color: rgba(255, 255, 255, 0.8); }
+.converted-quote-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+}
+.converted-quote input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  padding: 3px 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+}
+.converted-quote input:disabled { opacity: 0.55; cursor: wait; }
+.converted-quote-hint {
+  display: block;
+  margin-top: 5px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.manual-quote-note {
+  margin: 12px 0 0;
+  color: var(--secondary);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.exchange-rate-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.52);
+  font-size: 11px;
+}
+.exchange-rate-row input {
+  width: 86px;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.22);
+  outline: 0;
+  color: #fff;
+  background: transparent;
+  padding: 3px 2px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.exchange-status {
+  display: block;
+  margin-top: 6px;
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 10px;
+}
+.exchange-status.error { color: #ffb4ab; }
+@keyframes exchange-spin { to { transform: rotate(360deg); } }
 
 .app-grid + .quote-card,
 .quote-card + .glass-section { margin-top: 22px; }
